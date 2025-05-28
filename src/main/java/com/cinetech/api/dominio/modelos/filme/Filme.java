@@ -5,50 +5,55 @@ import java.util.Objects;
 
 public class Filme {
     private final FilmeId id;
-    private String titulo;
-    private String genero;
-    private int duracaoMinutos;
-    private String idioma;
-    private String classificacaoIndicativa;
-    private LocalDate dataInicioExibicao;
-    private LocalDate dataFimExibicao;
-    private String sinopse;
-    private double notaMedia;
+    private String titulo; // [cite: 4]
+    private String genero; // [cite: 4]
+    private int duracaoMinutos; // [cite: 4] ("duração")
+    private String idioma; // [cite: 4]
+    private String classificacaoEtaria; // [cite: 4]
+    private String sinopse; // Atributo comum, embora não listado na tabela, mas implícito para um sistema de cinema.
+    private LocalDate dataInicioExibicao; // [cite: 5, 28]
+    private LocalDate dataFimExibicao; // [cite: 5, 28]
+    private double notaMediaAvaliacao; // Para regra de remoção antecipada [cite: 22]
+    private boolean removidoDaProgramacao; // Para F3 [cite: 7]
 
     public Filme(String titulo, String genero, int duracaoMinutos, String idioma,
-                 String classificacaoIndicativa, LocalDate dataInicioExibicao,
+                 String classificacaoEtaria, LocalDate dataInicioExibicao,
                  LocalDate dataFimExibicao, String sinopse) {
-        this(FilmeId.novo(), titulo, genero, duracaoMinutos, idioma, classificacaoIndicativa,
-                dataInicioExibicao, dataFimExibicao, sinopse, 0.0);
+        this(FilmeId.novo(), titulo, genero, duracaoMinutos, idioma, classificacaoEtaria,
+                dataInicioExibicao, dataFimExibicao, sinopse, 0.0, false);
     }
 
     public Filme(FilmeId id, String titulo, String genero, int duracaoMinutos, String idioma,
-                 String classificacaoIndicativa, LocalDate dataInicioExibicao,
-                 LocalDate dataFimExibicao, String sinopse, double notaMedia) {
+                 String classificacaoEtaria, LocalDate dataInicioExibicao,
+                 LocalDate dataFimExibicao, String sinopse, double notaMediaAvaliacao, boolean removidoDaProgramacao) {
         this.id = Objects.requireNonNull(id, "ID do Filme não pode ser nulo.");
         setTitulo(titulo);
         setGenero(genero);
         setDuracaoMinutos(duracaoMinutos);
         setIdioma(idioma);
-        setClassificacaoIndicativa(classificacaoIndicativa);
+        setClassificacaoEtaria(classificacaoEtaria);
         this.dataInicioExibicao = Objects.requireNonNull(dataInicioExibicao, "Data de início da exibição não pode ser nula.");
         this.dataFimExibicao = Objects.requireNonNull(dataFimExibicao, "Data de fim da exibição não pode ser nula.");
         validarConsistenciaDatasExibicao();
         setSinopse(sinopse);
-        setNotaMedia(notaMedia);
+        setNotaMediaAvaliacao(notaMediaAvaliacao);
+        this.removidoDaProgramacao = removidoDaProgramacao;
     }
 
+    // Getters
     public FilmeId getId() { return id; }
     public String getTitulo() { return titulo; }
     public String getGenero() { return genero; }
     public int getDuracaoMinutos() { return duracaoMinutos; }
     public String getIdioma() { return idioma; }
-    public String getClassificacaoIndicativa() { return classificacaoIndicativa; }
+    public String getClassificacaoEtaria() { return classificacaoEtaria; }
     public LocalDate getDataInicioExibicao() { return dataInicioExibicao; }
     public LocalDate getDataFimExibicao() { return dataFimExibicao; }
     public String getSinopse() { return sinopse; }
-    public double getNotaMedia() { return notaMedia; }
+    public double getNotaMediaAvaliacao() { return notaMediaAvaliacao; }
+    public boolean isRemovidoDaProgramacao() { return removidoDaProgramacao; }
 
+    // Setters com validação
     public void setTitulo(String titulo) {
         if (titulo == null || titulo.trim().isEmpty()) {
             throw new IllegalArgumentException("Título do filme não pode ser vazio.");
@@ -77,11 +82,11 @@ public class Filme {
         this.idioma = idioma.trim();
     }
 
-    public void setClassificacaoIndicativa(String classificacaoIndicativa) {
-        if (classificacaoIndicativa == null || classificacaoIndicativa.trim().isEmpty()) {
-            throw new IllegalArgumentException("Classificação indicativa não pode ser vazia.");
+    public void setClassificacaoEtaria(String classificacaoEtaria) {
+        if (classificacaoEtaria == null || classificacaoEtaria.trim().isEmpty()) {
+            throw new IllegalArgumentException("Classificação etária não pode ser vazia.");
         }
-        this.classificacaoIndicativa = classificacaoIndicativa.trim();
+        this.classificacaoEtaria = classificacaoEtaria.trim();
     }
 
     public void setDataInicioExibicao(LocalDate dataInicioExibicao) {
@@ -95,17 +100,17 @@ public class Filme {
     }
 
     public void setSinopse(String sinopse) {
-        this.sinopse = sinopse; // Permitindo nulo ou vazio
+        this.sinopse = sinopse; // Pode ser nulo ou vazio
     }
 
-    public void setNotaMedia(double notaMedia) { // F8
-        if (notaMedia < 0.0 || notaMedia > 5.0) {
-            // Permitindo 0 como nota válida, mas não fora do intervalo 0-5
-            throw new IllegalArgumentException("Nota média deve estar entre 0.0 e 5.0. Recebido: " + notaMedia);
+    public void setNotaMediaAvaliacao(double notaMediaAvaliacao) { // F8
+        if (notaMediaAvaliacao < 0.0 || notaMediaAvaliacao > 5.0) {
+            throw new IllegalArgumentException("Nota média da avaliação deve estar entre 0.0 e 5.0. Recebido: " + notaMediaAvaliacao);
         }
-        this.notaMedia = notaMedia;
+        this.notaMediaAvaliacao = notaMediaAvaliacao;
     }
 
+    // Métodos de Negócio
     private void validarConsistenciaDatasExibicao() {
         if (this.dataInicioExibicao != null && this.dataFimExibicao != null &&
                 this.dataFimExibicao.isBefore(this.dataInicioExibicao)) {
@@ -114,16 +119,21 @@ public class Filme {
         }
     }
 
-    public boolean exibicaoTerminadaEm(LocalDate dataReferencia) { // F3
+    // rever
+    public boolean exibicaoTerminadaEm(LocalDate dataReferencia) {
         Objects.requireNonNull(dataReferencia, "Data de referência não pode ser nula.");
-        if (this.dataFimExibicao == null) {
+        if (this.dataFimExibicao == null) { // Se não tem data de fim, não terminou (ou não foi definida)
             return false;
         }
         return dataReferencia.isAfter(this.dataFimExibicao);
     }
 
-    public boolean precisaSerRemovidoPorNotaBaixa() { // F8
-        return this.notaMedia < 2.5;
+    public void marcarComoRemovidoDaProgramacao() {
+        this.removidoDaProgramacao = true;
+    }
+
+    public boolean deveSerRemovidoPorNotaBaixa() {
+        return this.notaMediaAvaliacao < 2.5; // [cite: 22]
     }
 
     @Override
@@ -145,6 +155,7 @@ public class Filme {
                 "id=" + id +
                 ", titulo='" + titulo + '\'' +
                 ", dataFimExibicao=" + dataFimExibicao +
+                ", removidoDaProgramacao=" + removidoDaProgramacao +
                 '}';
     }
 }

@@ -23,9 +23,7 @@ public final class SalaId {
         }
     }
 
-    public UUID getValor() {
-        return valor;
-    }
+    public UUID getValor() { return valor; }
 
     @Override
     public boolean equals(Object o) {
@@ -36,12 +34,8 @@ public final class SalaId {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(valor);
-    }
+    public int hashCode() { return Objects.hash(valor); }
 
     @Override
-    public String toString() {
-        return valor.toString();
-    }
+    public String toString() { return valor.toString(); }
 }

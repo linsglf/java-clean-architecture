@@ -18,7 +18,7 @@ public class Pagamento {
     private LocalDateTime dataAtualizacao;
     private String idTransacaoGateway; // ID da transação no provedor de pagamento externo
 
-    // O pagamento está relacionado a um Ingresso OU a uma Reserva de Evento, mas não ambos.
+    // O pagamento está relacionado a UM Ingresso OU a UMA Reserva de Evento, mas não ambos.
     private final IngressoId ingressoId;         // Pode ser nulo
     private final ReservaEventoId reservaEventoId; // Pode ser nulo
 
@@ -45,14 +45,20 @@ public class Pagamento {
         this.id = Objects.requireNonNull(id, "ID do Pagamento não pode ser nulo.");
 
         if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Valor do pagamento deve ser positivo. Recebido: " + valor);
+            // Permitir pagamento de valor zero para promoções 100% ou pontos?
+            // O documento diz "crédito proporcional ao valor pago" (F4) e "acumula pontos baseados no valor do ingresso" (F6)
+            // "Créditos podem ser trocados por ingressos" (Source 24) -> isso pode gerar um pagamento de valor zero.
+            // Vamos permitir valor zero, mas não negativo.
+            if (valor == null || valor.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("Valor do pagamento não pode ser nulo ou negativo. Recebido: " + valor);
+            }
         }
         this.valor = valor;
         this.metodoPagamento = Objects.requireNonNull(metodoPagamento, "Método de pagamento não pode ser nulo.");
         this.status = Objects.requireNonNull(status, "Status do pagamento não pode ser nulo.");
         this.dataCriacao = Objects.requireNonNull(dataCriacao, "Data de criação não pode ser nula.");
         this.dataAtualizacao = Objects.requireNonNull(dataAtualizacao, "Data de atualização não pode ser nula.");
-        this.idTransacaoGateway = idTransacaoGateway; // Pode ser nulo inicialmente
+        this.idTransacaoGateway = idTransacaoGateway;
 
         if (ingressoId == null && reservaEventoId == null) {
             throw new IllegalArgumentException("Pagamento deve estar associado a um Ingresso ou a uma Reserva de Evento.");
@@ -77,16 +83,16 @@ public class Pagamento {
 
 
     // Métodos de Negócio para alterar o estado
-    public void marcarComoAprovado(String idTransacaoGateway) {
+    public void aprovar(String idTransacaoGateway) {
         if (this.status != StatusPagamento.PENDENTE && this.status != StatusPagamento.PROCESSANDO) {
             throw new IllegalStateException("Pagamento com ID " + this.id + " não pode ser aprovado pois seu status é " + this.status);
         }
         this.status = StatusPagamento.APROVADO;
-        this.idTransacaoGateway = idTransacaoGateway; // Pode ser nulo se o método não gerar (ex: crédito interno)
+        this.idTransacaoGateway = idTransacaoGateway;
         this.dataAtualizacao = LocalDateTime.now();
     }
 
-    public void marcarComoRejeitado() {
+    public void rejeitar() {
         if (this.status != StatusPagamento.PENDENTE && this.status != StatusPagamento.PROCESSANDO) {
             throw new IllegalStateException("Pagamento com ID " + this.id + " não pode ser rejeitado pois seu status é " + this.status);
         }
@@ -94,23 +100,38 @@ public class Pagamento {
         this.dataAtualizacao = LocalDateTime.now();
     }
 
-    public void marcarComoProcessando() {
+    public void iniciarProcessamento() {
         if (this.status != StatusPagamento.PENDENTE) {
-            throw new IllegalStateException("Pagamento com ID " + this.id + " só pode ser marcado como processando se estiver pendente. Status atual: " + this.status);
+            throw new IllegalStateException("Pagamento com ID " + this.id + " só pode iniciar processamento se estiver pendente. Status atual: " + this.status);
         }
         this.status = StatusPagamento.PROCESSANDO;
         this.dataAtualizacao = LocalDateTime.now();
     }
 
-    public void marcarComoCanceladoPeloSistema() { // Ex: falha de comunicação, timeout
+    public void cancelar() { // Cancelamento pelo sistema/usuário antes de aprovação
         if (this.status == StatusPagamento.APROVADO || this.status == StatusPagamento.REEMBOLSADO) {
-            throw new IllegalStateException("Pagamento com ID " + this.id + " que já foi aprovado ou reembolsado não pode ser cancelado pelo sistema desta forma.");
+            throw new IllegalStateException("Pagamento com ID " + this.id + " que já foi aprovado ou reembolsado não pode ser cancelado desta forma.");
         }
-        this.status = StatusPagamento.CANCELADO; // Poderia ser um status específico como ERRO_PROCESSAMENTO
+        this.status = StatusPagamento.CANCELADO;
         this.dataAtualizacao = LocalDateTime.now();
     }
 
-    // Outros métodos de negócio (ex: iniciarReembolso, confirmarReembolso)
+    public void registrarErroProcessamento() {
+        // Pode ser chamado se houver falha de comunicação com gateway, etc.
+        this.status = StatusPagamento.ERRO_PROCESSAMENTO;
+        this.dataAtualizacao = LocalDateTime.now();
+    }
+
+    // Para F4 (Reembolso) ou F7 (Cancelamento de reserva paga)
+    public void reembolsar(String idTransacaoReembolsoGateway) {
+        if(this.status != StatusPagamento.APROVADO) {
+            throw new IllegalStateException("Apenas pagamentos aprovados podem ser reembolsados. Status atual: " + this.status);
+        }
+        this.status = StatusPagamento.REEMBOLSADO;
+        this.idTransacaoGateway = idTransacaoReembolsoGateway; // Pode sobrescrever ou adicionar um novo campo para ID de reembolso
+        this.dataAtualizacao = LocalDateTime.now();
+    }
+
 
     @Override
     public boolean equals(Object o) {
@@ -127,13 +148,13 @@ public class Pagamento {
 
     @Override
     public String toString() {
+        String associacao = ingressoId != null ? "ingressoId=" + ingressoId : "reservaEventoId=" + reservaEventoId;
         return "Pagamento{" +
                 "id=" + id +
                 ", valor=" + valor +
                 ", status=" + status +
                 ", metodo=" + metodoPagamento +
-                ", ingressoId=" + ingressoId +
-                ", reservaEventoId=" + reservaEventoId +
+                ", " + associacao +
                 '}';
     }
 }

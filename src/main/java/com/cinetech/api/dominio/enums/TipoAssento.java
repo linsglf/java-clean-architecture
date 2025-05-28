@@ -1,13 +1,13 @@
 package com.cinetech.api.dominio.enums;
 
-public enum PerfilCliente {
-    REGULAR("Regular"),
-    ESTUDANTE("Estudante"),
-    IDOSO("Idoso (60+)"),
-    PCD("Pessoa com Deficiência");
+public enum TipoAssento {
+    COMUM("Comum"),
+    VIP("VIP"),
+    PCD("Pessoa com Deficiência"); // Lugares especiais
+
     private final String descricao;
 
-    PerfilCliente(String descricao) {
+    TipoAssento(String descricao) {
         this.descricao = descricao;
     }
 

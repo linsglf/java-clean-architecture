@@ -1,6 +1,7 @@
 package com.cinetech.api.dominio.modelos.pontofidelidade;
 
 import com.cinetech.api.dominio.modelos.cliente.ClienteId;
+import com.cinetech.api.dominio.modelos.ingresso.IngressoId;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

@@ -1,21 +1,30 @@
 package com.cinetech.api.dominio.modelos.sala;
 
+import com.cinetech.api.dominio.enums.TipoSala;
+
 import java.util.Objects;
 
 public class Sala {
     private final SalaId id;
     private String nome;
-    private int capacidadeTotal;
-    private boolean disponivelParaEventos;
+    private int capacidadeTotal; // [cite: 13]
+    private TipoSala tipo; // 2D ou 3D [cite: 4, 13]
+    private boolean disponivelParaEventos; // [cite: 25] (implícito)
+    // A descrição de "possuir assentos comuns, VIP ou PCD" [cite: 4, 13]
+    // será refletida na configuração dos Assentos dentro de uma Sessao nesta Sala,
+    // ou em um layout padrão da sala. Para o modelo da Sala em si, a capacidade é o principal.
 
-    public Sala(String nome, int capacidadeTotal, boolean disponivelParaEventos) {
-        this(SalaId.novo(), nome, capacidadeTotal, disponivelParaEventos);
+    // Construtor para nova sala
+    public Sala(String nome, int capacidadeTotal, TipoSala tipo, boolean disponivelParaEventos) {
+        this(SalaId.novo(), nome, capacidadeTotal, tipo, disponivelParaEventos);
     }
 
-    public Sala(SalaId id, String nome, int capacidadeTotal, boolean disponivelParaEventos) {
+    // Construtor principal para criação/reconstituição
+    public Sala(SalaId id, String nome, int capacidadeTotal, TipoSala tipo, boolean disponivelParaEventos) {
         this.id = Objects.requireNonNull(id, "ID da Sala não pode ser nulo.");
-        this.setNome(nome);
-        this.setCapacidadeTotal(capacidadeTotal);
+        setNome(nome);
+        setCapacidadeTotal(capacidadeTotal);
+        setTipo(tipo);
         this.disponivelParaEventos = disponivelParaEventos;
     }
 
@@ -23,8 +32,10 @@ public class Sala {
     public SalaId getId() { return id; }
     public String getNome() { return nome; }
     public int getCapacidadeTotal() { return capacidadeTotal; }
+    public TipoSala getTipo() { return tipo; }
     public boolean isDisponivelParaEventos() { return disponivelParaEventos; }
 
+    // Setters com validação
     public void setNome(String nome) {
         if (nome == null || nome.trim().isEmpty()) {
             throw new IllegalArgumentException("Nome da sala não pode ser vazio.");
@@ -39,10 +50,13 @@ public class Sala {
         this.capacidadeTotal = capacidadeTotal;
     }
 
+    public void setTipo(TipoSala tipo) {
+        this.tipo = Objects.requireNonNull(tipo, "Tipo da sala não pode ser nulo.");
+    }
+
     public void setDisponivelParaEventos(boolean disponivelParaEventos) {
         this.disponivelParaEventos = disponivelParaEventos;
     }
-
 
     @Override
     public boolean equals(Object o) {
@@ -63,6 +77,7 @@ public class Sala {
                 "id=" + id +
                 ", nome='" + nome + '\'' +
                 ", capacidadeTotal=" + capacidadeTotal +
+                ", tipo=" + tipo +
                 ", disponivelParaEventos=" + disponivelParaEventos +
                 '}';
     }
