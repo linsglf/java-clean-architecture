@@ -128,6 +128,26 @@ public class Filme {
         return dataReferencia.isAfter(this.dataFimExibicao);
     }
 
+    /**
+     * Verifica se o filme está em período de exibição na data de referência.
+     * Relevante para agendamento de sessão e exibição na listagem de filmes em cartaz.
+     * @param dataReferencia A data para a qual verificar a exibição.
+     * @return true se o filme está em exibição, false caso contrário.
+     */
+    public boolean estaEmExibicao(LocalDate dataReferencia) { // <<< MÉTODO ADICIONADO/RESTAURADO
+        Objects.requireNonNull(dataReferencia, "Data de referência não pode ser nula.");
+        if (isRemovidoDaProgramacao()) { // Se foi removido, não está em exibição
+            return false;
+        }
+        if (dataInicioExibicao == null || dataFimExibicao == null) {
+            // Se as datas não estão completamente definidas, não se pode afirmar que está em exibição
+            return false;
+        }
+        // Está em exibição se a data de referência NÃO é ANTES do início E NÃO é DEPOIS do fim.
+        // Ou seja, dataReferencia >= dataInicioExibicao AND dataReferencia <= dataFimExibicao
+        return !dataReferencia.isBefore(dataInicioExibicao) && !dataReferencia.isAfter(dataFimExibicao);
+    }
+
     public void marcarComoRemovidoDaProgramacao() {
         this.removidoDaProgramacao = true;
     }

@@ -3,9 +3,11 @@ package com.cinetech.api.dominio.repositorios;
 
 import com.cinetech.api.dominio.modelos.cliente.Cliente;
 import com.cinetech.api.dominio.modelos.cliente.ClienteId;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface ClienteRepositorio {
 
@@ -43,6 +45,9 @@ public interface ClienteRepositorio {
      * @return Uma lista de todos os clientes.
      */
     List<Cliente> buscarTodos();
+
+    @Transactional(readOnly = true)
+    boolean existePorIdValorPrimitivo(UUID idPrimitivo);
 
     // void deletarPorId(ClienteId clienteId);
 }

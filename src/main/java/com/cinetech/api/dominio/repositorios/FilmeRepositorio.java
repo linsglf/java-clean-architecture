@@ -60,4 +60,6 @@ public interface FilmeRepositorio {
      * @param filmeId O ID do filme a ser deletado.
      */
     void deletarPorId(FilmeId filmeId);
+
+    boolean existePorTitulo(String titulo);
 }

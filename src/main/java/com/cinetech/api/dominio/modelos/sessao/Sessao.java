@@ -117,6 +117,32 @@ public class Sessao {
         System.out.println("INFO DOMINIO: " + this.assentos.size() + " assentos gerados para sessão " + this.id + " na sala " + this.sala.getNome());
     }
 
+    /**
+     * Adiciona um assento pré-construído à lista de assentos da sessão.
+     * Usado principalmente durante a reconstituição do agregado pela camada de persistência.
+     * Garante que o assento pertença a esta sessão.
+     * @param assento O assento de domínio a ser adicionado.
+     */
+    public void adicionarAssento(Assento assento) {
+        Objects.requireNonNull(assento, "Assento a ser adicionado não pode ser nulo.");
+        if (assento.getSessao() == null || !assento.getSessao().getId().equals(this.id)) {
+            throw new IllegalArgumentException("Tentativa de adicionar assento (ID: " + assento.getId() +
+                    ") que não pertence a esta sessão (ID: " + this.id + ").");
+        }
+        // Verifica se já existe um assento com o mesmo identificador de posição
+        if (this.assentos.stream().anyMatch(a -> a.getIdentificadorPosicao().equalsIgnoreCase(assento.getIdentificadorPosicao()))) {
+            // Se for durante a reconstituição e o assento já estiver lá, não precisa adicionar de novo.
+            // Se for uma tentativa de adicionar um novo com mesmo identificador, é um erro.
+            // Vamos assumir que esta verificação é para evitar duplicatas durante a montagem.
+            boolean jaExisteComMesmoId = this.assentos.stream().anyMatch(a -> a.getId().equals(assento.getId()));
+            if (!jaExisteComMesmoId) {
+                throw new IllegalStateException("Assento com identificador de posição '" + assento.getIdentificadorPosicao() + "' já existe nesta sessão.");
+            } // Se já existe com mesmo ID, não precisa adicionar novamente.
+        } else {
+            this.assentos.add(assento);
+        }
+    }
+
     public Optional<Assento> buscarAssentoPorIdentificador(String identificadorAssento) {
         if (identificadorAssento == null || identificadorAssento.trim().isEmpty()) {
             throw new IllegalArgumentException("Identificador do assento não pode ser vazio.");
