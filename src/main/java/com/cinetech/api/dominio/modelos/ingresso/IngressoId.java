@@ -23,6 +23,10 @@ public final class IngressoId {
         }
     }
 
+    public static IngressoId de(UUID valorUuid) {
+        return new IngressoId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValor() {
         return valor;
     }

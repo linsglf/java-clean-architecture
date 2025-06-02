@@ -12,6 +12,11 @@ public final class PagamentoId {
         try { return new PagamentoId(UUID.fromString(valorStr)); }
         catch (IllegalArgumentException e) { throw new IllegalArgumentException("String de ID do Pagamento inválida: '" + valorStr + "'. Deve ser um UUID válido.", e); }
     }
+
+    public static PagamentoId de(UUID valorUuid) {
+        return new PagamentoId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValor() { return valor; }
     @Override public boolean equals(Object o) { if (this == o) return true; if (o == null || getClass() != o.getClass()) return false; PagamentoId that = (PagamentoId) o; return valor.equals(that.valor); }
     @Override public int hashCode() { return Objects.hash(valor); }

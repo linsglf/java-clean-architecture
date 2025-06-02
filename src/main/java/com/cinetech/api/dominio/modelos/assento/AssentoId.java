@@ -12,6 +12,11 @@ public final class AssentoId {
         try { return new AssentoId(UUID.fromString(valorStr)); }
         catch (IllegalArgumentException e) { throw new IllegalArgumentException("String de ID do Assento inválida: '" + valorStr + "'. Deve ser um UUID válido.", e); }
     }
+
+    public static AssentoId de(UUID valorUuid) {
+        return new AssentoId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValor() { return valor; }
     @Override public boolean equals(Object o) { if (this == o) return true; if (o == null || getClass() != o.getClass()) return false; AssentoId assentoId = (AssentoId) o; return valor.equals(assentoId.valor); }
     @Override public int hashCode() { return Objects.hash(valor); }

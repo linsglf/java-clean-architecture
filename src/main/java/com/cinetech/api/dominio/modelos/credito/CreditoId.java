@@ -23,6 +23,10 @@ public final class CreditoId {
         }
     }
 
+    public static CreditoId de(UUID valorUuid) {
+        return new CreditoId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValorUUID() {
         return valor;
     }

@@ -12,6 +12,11 @@ public final class SessaoId {
         try { return new SessaoId(UUID.fromString(valorStr)); }
         catch (IllegalArgumentException e) { throw new IllegalArgumentException("String de ID da Sessao inválida: '" + valorStr + "'. Deve ser um UUID válido.", e); }
     }
+
+    public static SessaoId de(UUID valorUuid) {
+        return new SessaoId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValor() { return valor; }
     @Override public boolean equals(Object o) { if (this == o) return true; if (o == null || getClass() != o.getClass()) return false; SessaoId sessaoId = (SessaoId) o; return valor.equals(sessaoId.valor); }
     @Override public int hashCode() { return Objects.hash(valor); }

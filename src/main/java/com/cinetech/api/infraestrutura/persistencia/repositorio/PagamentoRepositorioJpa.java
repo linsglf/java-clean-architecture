@@ -1,14 +1,18 @@
 package com.cinetech.api.infraestrutura.persistencia.repositorio;
 
-import com.cinetech.api.dominio.enums.StatusPagamento;
-import com.cinetech.api.dominio.modelos.ingresso.IngressoId;
 import com.cinetech.api.dominio.modelos.pagamento.Pagamento;
 import com.cinetech.api.dominio.modelos.pagamento.PagamentoId;
+import com.cinetech.api.dominio.modelos.ingresso.IngressoId;
 import com.cinetech.api.dominio.modelos.reservaevento.ReservaEventoId;
+import com.cinetech.api.dominio.enums.StatusPagamento;
 import com.cinetech.api.dominio.repositorios.PagamentoRepositorio;
-import com.cinetech.api.infraestrutura.persistencia.entidade.PagamentoJpa;
 import com.cinetech.api.infraestrutura.persistencia.jpa.PagamentoJpaRepository;
+import com.cinetech.api.infraestrutura.persistencia.entidade.PagamentoJpa;
+// Importe as CLASSES dos mappers para chamadas estáticas
 import com.cinetech.api.infraestrutura.persistencia.mapper.PagamentoMapper;
+import com.cinetech.api.infraestrutura.persistencia.mapper.IngressoMapper; // Para toPrimitiveId de IngressoId
+import com.cinetech.api.infraestrutura.persistencia.mapper.ReservaEventoMapper; // Para toPrimitiveId de ReservaEventoId
+
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,69 +26,64 @@ import java.util.stream.Collectors;
 public class PagamentoRepositorioJpa implements PagamentoRepositorio {
 
     private final PagamentoJpaRepository jpaRepositoryInternal;
-    private final PagamentoMapper pagamentoMapper;
+    // Mappers não são injetados
 
-    public PagamentoRepositorioJpa(PagamentoJpaRepository jpaRepositoryInternal, PagamentoMapper pagamentoMapper) {
+    public PagamentoRepositorioJpa(PagamentoJpaRepository jpaRepositoryInternal) {
         this.jpaRepositoryInternal = jpaRepositoryInternal;
-        this.pagamentoMapper = pagamentoMapper;
-    }
-
-    private Pagamento mapToDomain(PagamentoJpa jpaEntity) {
-        if (jpaEntity == null) return null;
-        return pagamentoMapper.toDomainEntity(jpaEntity);
-    }
-
-    private List<Pagamento> mapToDomainList(List<PagamentoJpa> jpaList) {
-        if (jpaList == null) return Collections.emptyList();
-        return jpaList.stream().map(this::mapToDomain).collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public Pagamento salvar(Pagamento pagamentoDominio) {
-        PagamentoJpa pagamentoJpa = pagamentoMapper.toJpaEntity(pagamentoDominio);
+        PagamentoJpa pagamentoJpa = PagamentoMapper.toJpaEntity(pagamentoDominio); // Chamada estática
         PagamentoJpa salvoJpa = jpaRepositoryInternal.save(pagamentoJpa);
-        return mapToDomain(salvoJpa);
+        return PagamentoMapper.toDomainEntity(salvoJpa); // Chamada estática
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Pagamento> buscarPorId(PagamentoId pagamentoIdDominio) {
-        UUID idPrimitivo = pagamentoMapper.toPrimitiveId(pagamentoIdDominio);
-        return jpaRepositoryInternal.findById(idPrimitivo).map(this::mapToDomain);
+        UUID idPrimitivo = PagamentoMapper.toPrimitiveId(pagamentoIdDominio); // Chamada estática
+        return jpaRepositoryInternal.findById(idPrimitivo)
+                .map(PagamentoMapper::toDomainEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Pagamento> buscarPorIngressoId(IngressoId ingressoIdDominio) {
-        // O PagamentoMapper deve ter um método para converter IngressoId (VO) para UUID
-        // ou podemos usar o getter do VO.
-        UUID ingressoIdPrimitivo = ingressoIdDominio.getValor(); // Assumindo IngressoId.getValor() retorna UUID
-        return jpaRepositoryInternal.findByIngressoId(ingressoIdPrimitivo).map(this::mapToDomain);
+        UUID ingressoIdPrimitivo = IngressoMapper.toPrimitiveId(ingressoIdDominio); // Chamada estática
+        return jpaRepositoryInternal.findByIngressoId(ingressoIdPrimitivo)
+                .map(PagamentoMapper::toDomainEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Pagamento> buscarPorReservaEventoId(ReservaEventoId reservaEventoIdDominio) {
-        UUID reservaEventoIdPrimitivo = reservaEventoIdDominio.getValor(); // Assumindo ReservaEventoId.getValor() retorna UUID
-        return jpaRepositoryInternal.findByReservaEventoId(reservaEventoIdPrimitivo).map(this::mapToDomain);
+        UUID reservaEventoIdPrimitivo = ReservaEventoMapper.toPrimitiveId(reservaEventoIdDominio); // Chamada estática
+        return jpaRepositoryInternal.findByReservaEventoId(reservaEventoIdPrimitivo)
+                .map(PagamentoMapper::toDomainEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Pagamento> buscarPorIdTransacaoGateway(String idTransacaoGateway) {
-        return jpaRepositoryInternal.findByIdTransacaoGateway(idTransacaoGateway).map(this::mapToDomain);
+        return jpaRepositoryInternal.findByIdTransacaoGateway(idTransacaoGateway)
+                .map(PagamentoMapper::toDomainEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Pagamento> buscarPorStatus(StatusPagamento status) {
-        return mapToDomainList(jpaRepositoryInternal.findByStatus(status));
+        return jpaRepositoryInternal.findByStatus(status).stream()
+                .map(PagamentoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Pagamento> buscarTodos() {
-        return mapToDomainList(jpaRepositoryInternal.findAll());
+        return jpaRepositoryInternal.findAll().stream()
+                .map(PagamentoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 }

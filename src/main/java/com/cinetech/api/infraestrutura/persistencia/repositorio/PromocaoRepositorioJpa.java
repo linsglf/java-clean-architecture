@@ -21,16 +21,14 @@ import java.util.stream.Collectors;
 public class PromocaoRepositorioJpa implements PromocaoRepositorio {
 
     private final PromocaoJpaRepository jpaRepositoryInternal;
-    private final PromocaoMapper promocaoMapper;
 
-    public PromocaoRepositorioJpa(PromocaoJpaRepository jpaRepositoryInternal, PromocaoMapper promocaoMapper) {
+    public PromocaoRepositorioJpa(PromocaoJpaRepository jpaRepositoryInternal) {
         this.jpaRepositoryInternal = jpaRepositoryInternal;
-        this.promocaoMapper = promocaoMapper;
     }
 
     private Promocao mapToDomain(PromocaoJpa jpaEntity) {
         if (jpaEntity == null) return null;
-        return promocaoMapper.toDomainEntity(jpaEntity);
+        return PromocaoMapper.toDomainEntity(jpaEntity);
     }
 
     private List<Promocao> mapToDomainList(List<PromocaoJpa> jpaList) {
@@ -41,7 +39,7 @@ public class PromocaoRepositorioJpa implements PromocaoRepositorio {
     @Override
     @Transactional
     public Promocao salvar(Promocao promocaoDominio) {
-        PromocaoJpa promocaoJpa = promocaoMapper.toJpaEntity(promocaoDominio);
+        PromocaoJpa promocaoJpa = PromocaoMapper.toJpaEntity(promocaoDominio);
         PromocaoJpa salvaJpa = jpaRepositoryInternal.save(promocaoJpa);
         return mapToDomain(salvaJpa);
     }
@@ -49,7 +47,7 @@ public class PromocaoRepositorioJpa implements PromocaoRepositorio {
     @Override
     @Transactional(readOnly = true)
     public Optional<Promocao> buscarPorId(PromocaoId promocaoIdDominio) {
-        UUID idPrimitivo = promocaoMapper.toPrimitiveId(promocaoIdDominio);
+        UUID idPrimitivo = PromocaoMapper.toPrimitiveId(promocaoIdDominio);
         return jpaRepositoryInternal.findById(idPrimitivo).map(this::mapToDomain);
     }
 

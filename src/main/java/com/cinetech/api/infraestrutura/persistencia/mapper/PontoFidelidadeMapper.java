@@ -1,50 +1,91 @@
 package com.cinetech.api.infraestrutura.persistencia.mapper;
 
-import com.cinetech.api.dominio.modelos.cliente.ClienteId;
-import com.cinetech.api.dominio.modelos.ingresso.IngressoId;
 import com.cinetech.api.dominio.modelos.pontofidelidade.PontoFidelidade;
 import com.cinetech.api.dominio.modelos.pontofidelidade.PontoFidelidadeId;
+import com.cinetech.api.dominio.modelos.cliente.ClienteId;    // VO do domínio
+import com.cinetech.api.dominio.modelos.ingresso.IngressoId;  // VO do domínio
 import com.cinetech.api.infraestrutura.persistencia.entidade.PontoFidelidadeJpa;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
+import com.cinetech.api.infraestrutura.persistencia.entidade.ClienteJpa; // Para criar referência em toJpaEntity
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring")
-public interface PontoFidelidadeMapper {
+public class PontoFidelidadeMapper {
 
-    @Named("pontoFidelidadeIdToUuid")
-    default UUID pontoFidelidadeIdToUuid(PontoFidelidadeId pfId) {
-        return pfId == null ? null : pfId.getValorUUID();
+    private PontoFidelidadeMapper() {}
+
+    public static PontoFidelidadeJpa toJpaEntity(PontoFidelidade domainEntity) {
+        if (domainEntity == null) {
+            return null;
+        }
+        PontoFidelidadeJpa jpaEntity = new PontoFidelidadeJpa();
+
+        if (domainEntity.getId() != null) {
+            jpaEntity.setId(domainEntity.getId().getValorUUID());
+        }
+
+        // Mapeando ClienteId (VO do domínio) para ClienteJpa (referência na JPA)
+        if (domainEntity.getClienteId() != null) {
+            ClienteJpa clienteRef = new ClienteJpa(); // Cria uma instância "proxy" de ClienteJpa
+            clienteRef.setId(domainEntity.getClienteId().getValor()); // Seta apenas o ID
+            jpaEntity.setCliente(clienteRef); // Seta o objeto ClienteJpa na PontoFidelidadeJpa
+        }
+
+        jpaEntity.setQuantidadeOriginal(domainEntity.getQuantidadeOriginal());
+        jpaEntity.setQuantidadeUtilizada(domainEntity.getQuantidadeUtilizada());
+        jpaEntity.setDataAquisicao(domainEntity.getDataAquisicao());
+        jpaEntity.setDataExpiracao(domainEntity.getDataExpiracao());
+
+        if (domainEntity.getIngressoOrigemId() != null) {
+            jpaEntity.setIngressoOrigemId(domainEntity.getIngressoOrigemId().getValor());
+        }
+        return jpaEntity;
     }
 
-    @Named("uuidToPontoFidelidadeId")
-    default PontoFidelidadeId uuidToPontoFidelidadeId(UUID uuid) {
-        return uuid == null ? null : PontoFidelidadeId.de(uuid.toString());
+    public static PontoFidelidade toDomainEntity(PontoFidelidadeJpa jpaEntity) {
+        if (jpaEntity == null) {
+            return null;
+        }
+
+        ClienteId clienteIdDominio = null;
+        if (jpaEntity.getCliente() != null && jpaEntity.getCliente().getId() != null) {
+            // Obtém o UUID do ClienteJpa e converte para ClienteId (VO do domínio)
+            clienteIdDominio = ClienteId.de(jpaEntity.getCliente().getId());
+        }
+
+        IngressoId ingressoIdDominio = null;
+        if (jpaEntity.getIngressoOrigemId() != null) {
+            ingressoIdDominio = IngressoId.de(jpaEntity.getIngressoOrigemId());
+        }
+
+        return new PontoFidelidade(
+                PontoFidelidadeId.de(jpaEntity.getId()),
+                clienteIdDominio, // Passa o ClienteId (VO)
+                jpaEntity.getQuantidadeOriginal(),
+                jpaEntity.getQuantidadeUtilizada(),
+                jpaEntity.getDataAquisicao(),
+                jpaEntity.getDataExpiracao(),
+                ingressoIdDominio
+        );
     }
 
-    default UUID toPrimitiveId(PontoFidelidadeId pfIdVo) {
-        return pfIdVo == null ? null : pfIdVo.getValorUUID();
+    public static List<PontoFidelidade> toDomainEntityList(List<PontoFidelidadeJpa> jpaEntityList) {
+        if (jpaEntityList == null) {
+            return Collections.emptyList();
+        }
+        return jpaEntityList.stream()
+                .map(PontoFidelidadeMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
-    // Mapeadores para ClienteId e IngressoId
-    default UUID clienteIdToUuid(ClienteId clienteId) { return clienteId == null ? null : clienteId.getValor(); }
-    default ClienteId uuidToClienteId(UUID uuid) { return uuid == null ? null : ClienteId.de(uuid.toString()); }
-    default UUID ingressoIdToUuid(IngressoId ingressoId) { return ingressoId == null ? null : ingressoId.getValor(); }
-    default IngressoId uuidToIngressoId(UUID uuid) { return uuid == null ? null : IngressoId.de(uuid.toString()); }
-
-
-    @Mapping(source = "id", target = "id", qualifiedByName = "uuidToPontoFidelidadeId")
-    @Mapping(source = "clienteId", target = "clienteId")
-    @Mapping(source = "ingressoOrigemId", target = "ingressoOrigemId")
-    PontoFidelidade toDomainEntity(PontoFidelidadeJpa jpaEntity);
-
-    @Mapping(source = "id", target = "id", qualifiedByName = "pontoFidelidadeIdToUuid")
-    @Mapping(source = "clienteId", target = "clienteId")
-    @Mapping(source = "ingressoOrigemId", target = "ingressoOrigemId")
-    PontoFidelidadeJpa toJpaEntity(PontoFidelidade domainEntity);
-
-    List<PontoFidelidade> toDomainEntityList(List<PontoFidelidadeJpa> jpaEntityList);
+    public static List<PontoFidelidadeJpa> toJpaEntityList(List<PontoFidelidade> domainEntityList) {
+        if (domainEntityList == null) {
+            return Collections.emptyList();
+        }
+        return domainEntityList.stream()
+                .map(PontoFidelidadeMapper::toJpaEntity)
+                .collect(Collectors.toList());
+    }
 }

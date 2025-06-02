@@ -51,6 +51,19 @@ public class Sessao {
         // Como Assento tem `final Sessao sessao`, o construtor de Assento já faria essa ligação.
     }
 
+    public Sessao(SessaoId id, Filme filme, Sala sala, LocalDateTime dataHoraInicio,
+                  TipoExibicao tipoExibicao, BigDecimal precoIngressoBase, StatusSessao status) {
+        this.id = Objects.requireNonNull(id, "ID da Sessão não pode ser nulo.");
+        // Validações internas via setters
+        setFilme(filme);
+        setSala(sala);
+        setDataHoraInicio(dataHoraInicio);
+        setTipoExibicao(tipoExibicao);
+        setPrecoIngressoBase(precoIngressoBase);
+        this.status = Objects.requireNonNull(status, "Status da Sessão não pode ser nulo.");
+        this.assentos = new ArrayList<>(); // Inicializa a lista de assentos vazia
+    }
+
     // Getters
     public SessaoId getId() { return id; }
     public Filme getFilme() { return filme; }

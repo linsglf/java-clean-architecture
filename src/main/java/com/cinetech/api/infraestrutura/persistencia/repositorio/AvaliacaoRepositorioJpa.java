@@ -1,16 +1,19 @@
 package com.cinetech.api.infraestrutura.persistencia.repositorio;
 
-import com.cinetech.api.dominio.enums.StatusAvaliacao;
 import com.cinetech.api.dominio.modelos.avaliacao.Avaliacao;
 import com.cinetech.api.dominio.modelos.avaliacao.AvaliacaoId;
-import com.cinetech.api.dominio.modelos.cliente.ClienteId;
 import com.cinetech.api.dominio.modelos.filme.FilmeId;
+import com.cinetech.api.dominio.modelos.cliente.ClienteId;
+import com.cinetech.api.dominio.enums.StatusAvaliacao;
 import com.cinetech.api.dominio.repositorios.AvaliacaoRepositorio;
-import com.cinetech.api.infraestrutura.persistencia.entidade.AvaliacaoJpa;
 import com.cinetech.api.infraestrutura.persistencia.jpa.AvaliacaoJpaRepository;
+import com.cinetech.api.infraestrutura.persistencia.entidade.AvaliacaoJpa;
+// Importa a CLASSE Mapper para chamadas estáticas
 import com.cinetech.api.infraestrutura.persistencia.mapper.AvaliacaoMapper;
-import com.cinetech.api.infraestrutura.persistencia.mapper.ClienteMapper;
-import com.cinetech.api.infraestrutura.persistencia.mapper.FilmeMapper;
+import com.cinetech.api.infraestrutura.persistencia.mapper.FilmeMapper;   // Para toPrimitiveId de FilmeId
+import com.cinetech.api.infraestrutura.persistencia.mapper.ClienteMapper; // Para toPrimitiveId de ClienteId
+
+
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,81 +27,78 @@ import java.util.stream.Collectors;
 public class AvaliacaoRepositorioJpa implements AvaliacaoRepositorio {
 
     private final AvaliacaoJpaRepository jpaRepositoryInternal;
-    private final AvaliacaoMapper avaliacaoMapper;
-    // Mappers auxiliares para converter IDs VOs para primitivos para as queries
-    private final FilmeMapper filmeMapper;
-    private final ClienteMapper clienteMapper;
+    // REMOVIDA A INJEÇÃO DO MAPPER: private final AvaliacaoMapper avaliacaoMapper;
+    // REMOVIDA A INJEÇÃO DOS MAPPERS AUXILIARES:
+    // private final FilmeMapper filmeMapper;
+    // private final ClienteMapper clienteMapper;
 
 
-    public AvaliacaoRepositorioJpa(AvaliacaoJpaRepository jpaRepositoryInternal,
-                                   AvaliacaoMapper avaliacaoMapper,
-                                   FilmeMapper filmeMapper,
-                                   ClienteMapper clienteMapper) {
+    // Construtor agora só injeta o JpaRepository
+    public AvaliacaoRepositorioJpa(AvaliacaoJpaRepository jpaRepositoryInternal) {
         this.jpaRepositoryInternal = jpaRepositoryInternal;
-        this.avaliacaoMapper = avaliacaoMapper;
-        this.filmeMapper = filmeMapper;
-        this.clienteMapper = clienteMapper;
-    }
-
-    private Avaliacao mapToDomain(AvaliacaoJpa jpaEntity) {
-        if (jpaEntity == null) return null;
-        // O AvaliacaoMapper deve ser configurado com 'uses = {FilmeMapper.class, ClienteMapper.class}'
-        // para converter FilmeJpa e ClienteJpa referenciados para seus IDs de domínio.
-        return avaliacaoMapper.toDomainEntity(jpaEntity);
-    }
-
-    private List<Avaliacao> mapToDomainList(List<AvaliacaoJpa> jpaList) {
-        if (jpaList == null) return Collections.emptyList();
-        return jpaList.stream().map(this::mapToDomain).collect(Collectors.toList());
+        // MAPPERS NÃO SÃO MAIS INJETADOS
     }
 
     @Override
     @Transactional
     public Avaliacao salvar(Avaliacao avaliacaoDominio) {
-        AvaliacaoJpa avaliacaoJpa = avaliacaoMapper.toJpaEntity(avaliacaoDominio);
+        AvaliacaoJpa avaliacaoJpa = AvaliacaoMapper.toJpaEntity(avaliacaoDominio); // Chamada estática
         AvaliacaoJpa salvaJpa = jpaRepositoryInternal.save(avaliacaoJpa);
-        return mapToDomain(salvaJpa);
+        return AvaliacaoMapper.toDomainEntity(salvaJpa); // Chamada estática
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Avaliacao> buscarPorId(AvaliacaoId avaliacaoIdDominio) {
-        UUID idPrimitivo = avaliacaoMapper.toPrimitiveId(avaliacaoIdDominio);
-        return jpaRepositoryInternal.findById(idPrimitivo).map(this::mapToDomain);
+        UUID idPrimitivo = AvaliacaoMapper.toPrimitiveId(avaliacaoIdDominio); // Chamada estática
+        return jpaRepositoryInternal.findById(idPrimitivo)
+                .map(AvaliacaoMapper::toDomainEntity); // Referência a método estático
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Avaliacao> buscarPorFilmeId(FilmeId filmeIdDominio) {
-        UUID filmeIdPrimitivo = filmeMapper.toPrimitiveId(filmeIdDominio);
-        return mapToDomainList(jpaRepositoryInternal.findByFilme_Id(filmeIdPrimitivo));
+        UUID filmeIdPrimitivo = FilmeMapper.toPrimitiveId(filmeIdDominio); // Chamada estática a FilmeMapper
+        return jpaRepositoryInternal.findByFilmeId(filmeIdPrimitivo).stream() // Assume que findByFilmeId existe em AvaliacaoJpaRepository
+                .map(AvaliacaoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<Avaliacao> buscarPorClienteEFilme(ClienteId clienteIdDominio, FilmeId filmeIdDominio) {
-        UUID clienteIdPrimitivo = clienteMapper.toPrimitiveId(clienteIdDominio);
-        UUID filmeIdPrimitivo = filmeMapper.toPrimitiveId(filmeIdDominio);
-        return jpaRepositoryInternal.findByCliente_IdAndFilme_Id(clienteIdPrimitivo, filmeIdPrimitivo)
-                .map(this::mapToDomain);
+        UUID clienteIdPrimitivo = ClienteMapper.toPrimitiveId(clienteIdDominio); // Chamada estática a ClienteMapper
+        UUID filmeIdPrimitivo = FilmeMapper.toPrimitiveId(filmeIdDominio);     // Chamada estática a FilmeMapper
+        return jpaRepositoryInternal.findByClienteIdAndFilmeId(clienteIdPrimitivo, filmeIdPrimitivo)
+                .map(AvaliacaoMapper::toDomainEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Avaliacao> buscarAvaliacoesAprovadasPorFilmeId(FilmeId filmeIdDominio) {
-        UUID filmeIdPrimitivo = filmeMapper.toPrimitiveId(filmeIdDominio);
-        return mapToDomainList(jpaRepositoryInternal.findByFilme_IdAndStatusVisibilidade(filmeIdPrimitivo, StatusAvaliacao.APROVADA));
+        UUID filmeIdPrimitivo = FilmeMapper.toPrimitiveId(filmeIdDominio);
+        List<AvaliacaoJpa> avaliacoesAprovadasJpa = jpaRepositoryInternal.findByFilmeIdAndStatusVisibilidade(
+                filmeIdPrimitivo,
+                StatusAvaliacao.APROVADA
+        );
+        return avaliacoesAprovadasJpa.stream()
+                .map(AvaliacaoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Avaliacao> buscarPorStatus(StatusAvaliacao status) {
-        return mapToDomainList(jpaRepositoryInternal.findByStatusVisibilidade(status));
+        return jpaRepositoryInternal.findByStatusVisibilidade(status).stream()
+                .map(AvaliacaoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Avaliacao> buscarTodas() {
-        return mapToDomainList(jpaRepositoryInternal.findAll());
+        return jpaRepositoryInternal.findAll().stream()
+                .map(AvaliacaoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 }

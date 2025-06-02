@@ -11,36 +11,33 @@ import java.util.UUID;
 public class CreditoCompensacaoJpa {
 
     @Id
-    private UUID id; // UUID do CreditoId
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "cliente_id", nullable = false)
-    private ClienteJpa cliente;
+    private ClienteJpa cliente; // Correto: armazena o objeto ClienteJpa
 
+    // ... outros campos como antes ...
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal valorOriginal;
-
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal valorUtilizado;
-
     @Column(nullable = false)
     private LocalDateTime dataEmissao;
-
-    private LocalDateTime dataValidade; // Pode ser nulo
-
+    @Column(nullable = true)
+    private LocalDateTime dataValidade;
     @Column(nullable = false)
     private boolean ativo;
-
     @Column(nullable = false, length = 255)
     private String motivo;
+    @Column(name = "sessao_origem_id")
+    private UUID sessaoOrigemId;
 
-    @Column(name = "sessao_origem_id") // UUID do SessaoId
-    private UUID sessaoOrigemId; // Pode ser nulo se o crédito não veio de uma sessão
 
     public CreditoCompensacaoJpa() {
     }
 
-    // Getters e Setters
+    // Getters e Setters (para todos os campos, incluindo 'cliente')
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public ClienteJpa getCliente() { return cliente; }
@@ -60,16 +57,22 @@ public class CreditoCompensacaoJpa {
     public UUID getSessaoOrigemId() { return sessaoOrigemId; }
     public void setSessaoOrigemId(UUID sessaoOrigemId) { this.sessaoOrigemId = sessaoOrigemId; }
 
+
+    // O método getClienteId() que você tinha aqui é desnecessário se o mapper cuidar da conversão
+    // public UUID getClienteId() {
+    //     return cliente != null ? cliente.getId() : null;
+    // }
+
+
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(Object o) { /* ... como antes ... */
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CreditoCompensacaoJpa that = (CreditoCompensacaoJpa) o;
         return Objects.equals(id, that.id);
     }
-
     @Override
-    public int hashCode() {
+    public int hashCode() { /* ... como antes ... */
         return Objects.hash(id);
     }
 }

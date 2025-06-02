@@ -1,6 +1,6 @@
 package com.cinetech.api.infraestrutura.persistencia.entidade;
 
-import com.cinetech.api.dominio.enums.StatusAvaliacao;
+import com.cinetech.api.dominio.enums.StatusAvaliacao; // Ajuste o pacote se necessário
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "avaliacao", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"filme_id", "cliente_id"}) // Cliente só pode avaliar um filme uma vez
+        @UniqueConstraint(columnNames = {"filme_id", "cliente_id"}) // Garante que um cliente avalia um filme apenas uma vez
 })
 public class AvaliacaoJpa {
 
@@ -16,15 +16,15 @@ public class AvaliacaoJpa {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "filme_id", nullable = false)
-    private FilmeJpa filme;
+    @JoinColumn(name = "filme_id", nullable = false) // Referencia a coluna de FK
+    private FilmeJpa filme; // <<< ARMAZENA O OBJETO FilmeJpa
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
-    private ClienteJpa cliente;
+    @JoinColumn(name = "cliente_id", nullable = false) // Referencia a coluna de FK
+    private ClienteJpa cliente; // <<< ARMAZENA O OBJETO ClienteJpa
 
     @Column(nullable = false)
-    private int nota; // 1 a 5
+    private int nota;
 
     @Lob
     @Column(columnDefinition = "TEXT")
@@ -40,13 +40,16 @@ public class AvaliacaoJpa {
     public AvaliacaoJpa() {
     }
 
-    // Getters e Setters
+    // Getters e Setters para todos os campos
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public FilmeJpa getFilme() { return filme; }
-    public void setFilme(FilmeJpa filme) { this.filme = filme; }
-    public ClienteJpa getCliente() { return cliente; }
-    public void setCliente(ClienteJpa cliente) { this.cliente = cliente; }
+
+    public FilmeJpa getFilme() { return filme; } // <<< Getter para FilmeJpa
+    public void setFilme(FilmeJpa filme) { this.filme = filme; } // <<< Setter para FilmeJpa
+
+    public ClienteJpa getCliente() { return cliente; } // <<< Getter para ClienteJpa
+    public void setCliente(ClienteJpa cliente) { this.cliente = cliente; } // <<< Setter para ClienteJpa
+
     public int getNota() { return nota; }
     public void setNota(int nota) { this.nota = nota; }
     public String getComentario() { return comentario; }

@@ -11,11 +11,11 @@ import java.util.UUID;
 public class PontoFidelidadeJpa {
 
     @Id
-    private UUID id; // UUID do PontoFidelidadeId
+    private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cliente_id", nullable = false)
-    private ClienteJpa cliente;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) // <<< MUDANÇA AQUI
+    @JoinColumn(name = "cliente_id", nullable = false)   // <<< MUDANÇA AQUI
+    private ClienteJpa cliente;                         // <<< MUDANÇA AQUI
 
     @Column(nullable = false)
     private int quantidadeOriginal;
@@ -29,8 +29,8 @@ public class PontoFidelidadeJpa {
     @Column(nullable = false)
     private LocalDate dataExpiracao;
 
-    @Column(name = "ingresso_origem_id") // UUID do IngressoId
-    private UUID ingressoOrigemId; // Pode ser nulo
+    @Column(name = "ingresso_origem_id")
+    private UUID ingressoOrigemId;
 
     public PontoFidelidadeJpa() {
     }
@@ -38,8 +38,10 @@ public class PontoFidelidadeJpa {
     // Getters e Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
-    public ClienteJpa getCliente() { return cliente; }
-    public void setCliente(ClienteJpa cliente) { this.cliente = cliente; }
+
+    public ClienteJpa getCliente() { return cliente; } // <<< MUDANÇA AQUI
+    public void setCliente(ClienteJpa cliente) { this.cliente = cliente; } // <<< MUDANÇA AQUI
+
     public int getQuantidadeOriginal() { return quantidadeOriginal; }
     public void setQuantidadeOriginal(int quantidadeOriginal) { this.quantidadeOriginal = quantidadeOriginal; }
     public int getQuantidadeUtilizada() { return quantidadeUtilizada; }

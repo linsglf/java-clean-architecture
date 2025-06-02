@@ -23,6 +23,10 @@ public final class AvaliacaoId {
         }
     }
 
+    public static AvaliacaoId de(UUID valorUuid) {
+        return new AvaliacaoId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValor() {
         return valor;
     }

@@ -10,9 +10,9 @@ import java.util.UUID;
 public class FilmeJpa {
 
     @Id
-    private UUID id;
+    private UUID id; // Corresponde ao FilmeId.valor
 
-    @Column(nullable = false, unique = true, length = 200) // Título pode ser único
+    @Column(nullable = false, unique = true, length = 200)
     private String titulo;
 
     @Column(length = 100)
@@ -25,9 +25,9 @@ public class FilmeJpa {
     private String idioma;
 
     @Column(length = 50)
-    private String classificacaoEtaria;
+    private String classificacaoEtaria; // Nome igual ao parâmetro do construtor de Filme
 
-    @Lob // Para textos mais longos, dependendo do banco
+    @Lob
     @Column(columnDefinition = "TEXT")
     private String sinopse;
 
@@ -37,16 +37,16 @@ public class FilmeJpa {
     @Column(nullable = false)
     private LocalDate dataFimExibicao;
 
-    @Column(precision = 3, scale = 1) // Ex: 4.5
+    @Column // Removido precision e scale para double
     private double notaMediaAvaliacao;
 
     @Column(nullable = false)
     private boolean removidoDaProgramacao;
 
-    public FilmeJpa() {
+    public FilmeJpa() { // Construtor padrão exigido pelo JPA
     }
 
-    // Getters e Setters
+    // Getters e Setters para todos os campos (necessários para JPA e MapStruct)
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public String getTitulo() { return titulo; }

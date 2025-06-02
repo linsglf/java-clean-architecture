@@ -12,25 +12,15 @@ import java.util.UUID;
 @Repository
 public interface AvaliacaoJpaRepository extends JpaRepository<AvaliacaoJpa, UUID> {
 
-    /**
-     * Busca todas as avaliações para um determinado FilmeJpa, usando o ID do filme.
-     */
-    List<AvaliacaoJpa> findByFilme_Id(UUID filmeId);
+    // Busca todas as avaliações para um determinado filme, usando o campo filmeId (UUID) da AvaliacaoJpa
+    List<AvaliacaoJpa> findByFilmeId(UUID filmeId); // CORREÇÃO: de findByFilme_Id para findByFilmeId
 
-    /**
-     * Busca a avaliação de um ClienteJpa específico para um FilmeJpa específico.
-     */
-    Optional<AvaliacaoJpa> findByCliente_IdAndFilme_Id(UUID clienteId, UUID filmeId);
+    // Busca a avaliação de um cliente específico para um filme específico
+    // Se AvaliacaoJpa tem clienteId (UUID) e filmeId (UUID)
+    Optional<AvaliacaoJpa> findByClienteIdAndFilmeId(UUID clienteId, UUID filmeId); // CORREÇÃO: de findByCliente_IdAndFilme_Id
 
-    /**
-     * Busca todas as avaliações para um FilmeJpa com um StatusAvaliacao específico.
-     * Útil para buscar apenas as APROVADAS para exibição.
-     */
-    List<AvaliacaoJpa> findByFilme_IdAndStatusVisibilidade(UUID filmeId, StatusAvaliacao statusVisibilidade);
+    // Busca todas as avaliações para um FilmeJpa com um StatusAvaliacao específico
+    List<AvaliacaoJpa> findByFilmeIdAndStatusVisibilidade(UUID filmeId, StatusAvaliacao statusVisibilidade); // CORREÇÃO
 
-    /**
-     * Busca todas as avaliações com um StatusAvaliacao específico.
-     * Útil para painéis de moderação.
-     */
     List<AvaliacaoJpa> findByStatusVisibilidade(StatusAvaliacao statusVisibilidade);
 }

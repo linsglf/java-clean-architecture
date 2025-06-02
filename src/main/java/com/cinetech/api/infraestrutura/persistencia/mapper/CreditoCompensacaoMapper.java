@@ -1,51 +1,95 @@
 package com.cinetech.api.infraestrutura.persistencia.mapper;
 
-import com.cinetech.api.dominio.modelos.cliente.ClienteId;
 import com.cinetech.api.dominio.modelos.credito.CreditoCompensacao;
 import com.cinetech.api.dominio.modelos.credito.CreditoId;
-import com.cinetech.api.dominio.modelos.sessao.SessaoId;
+import com.cinetech.api.dominio.modelos.cliente.ClienteId; // VO do domínio
+import com.cinetech.api.dominio.modelos.sessao.SessaoId;   // VO do domínio
 import com.cinetech.api.infraestrutura.persistencia.entidade.CreditoCompensacaoJpa;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
+import com.cinetech.api.infraestrutura.persistencia.entidade.ClienteJpa; // Para criar referência em toJpaEntity
 
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring") // uses = {ClienteMapper.class, SessaoMapper.class} implicitamente para os IDs
-public interface CreditoCompensacaoMapper {
+public class CreditoCompensacaoMapper {
 
-    // Reutilizando os mapeadores de ID de outros mappers ou definindo aqui
-    @Named("creditoIdToUuid")
-    default UUID creditoIdToUuid(CreditoId creditoId) {
-        return creditoId == null ? null : creditoId.getValorUUID();
+    private CreditoCompensacaoMapper() {}
+
+    public static CreditoCompensacaoJpa toJpaEntity(CreditoCompensacao domainEntity) {
+        if (domainEntity == null) {
+            return null;
+        }
+        CreditoCompensacaoJpa jpaEntity = new CreditoCompensacaoJpa();
+
+        if (domainEntity.getId() != null) {
+            jpaEntity.setId(domainEntity.getId().getValorUUID());
+        }
+
+        // Mapeando ClienteId (VO do domínio) para ClienteJpa (referência na JPA)
+        if (domainEntity.getClienteId() != null) {
+            ClienteJpa clienteRef = new ClienteJpa(); // Cria uma instância "proxy" de ClienteJpa
+            clienteRef.setId(domainEntity.getClienteId().getValor()); // Seta apenas o ID
+            jpaEntity.setCliente(clienteRef); // Seta o objeto ClienteJpa na CreditoCompensacaoJpa
+        }
+
+        jpaEntity.setValorOriginal(domainEntity.getValorOriginal());
+        jpaEntity.setValorUtilizado(domainEntity.getValorUtilizado());
+        jpaEntity.setDataEmissao(domainEntity.getDataEmissao());
+        jpaEntity.setDataValidade(domainEntity.getDataValidade());
+        jpaEntity.setAtivo(domainEntity.isAtivo());
+        jpaEntity.setMotivo(domainEntity.getMotivo());
+
+        if (domainEntity.getSessaoOrigemId() != null) {
+            jpaEntity.setSessaoOrigemId(domainEntity.getSessaoOrigemId().getValor());
+        }
+        return jpaEntity;
     }
 
-    @Named("uuidToCreditoId")
-    default CreditoId uuidToCreditoId(UUID uuid) {
-        return uuid == null ? null : CreditoId.de(uuid.toString());
+    public static CreditoCompensacao toDomainEntity(CreditoCompensacaoJpa jpaEntity) {
+        if (jpaEntity == null) {
+            return null;
+        }
+
+        ClienteId clienteIdDominio = null;
+        if (jpaEntity.getCliente() != null && jpaEntity.getCliente().getId() != null) {
+            // Obtém o UUID do ClienteJpa e converte para ClienteId (VO do domínio)
+            clienteIdDominio = ClienteId.de(jpaEntity.getCliente().getId());
+        }
+
+        SessaoId sessaoIdDominio = null;
+        if (jpaEntity.getSessaoOrigemId() != null) {
+            sessaoIdDominio = SessaoId.de(jpaEntity.getSessaoOrigemId());
+        }
+
+        return new CreditoCompensacao(
+                CreditoId.de(jpaEntity.getId()),
+                clienteIdDominio, // Passa o ClienteId (VO)
+                jpaEntity.getValorOriginal(),
+                jpaEntity.getValorUtilizado(),
+                jpaEntity.getDataEmissao(),
+                jpaEntity.getDataValidade(),
+                jpaEntity.isAtivo(),
+                jpaEntity.getMotivo(),
+                sessaoIdDominio
+        );
     }
 
-    default UUID toPrimitiveId(CreditoId creditoIdVo) {
-        return creditoIdVo == null ? null : creditoIdVo.getValorUUID();
+    public static List<CreditoCompensacao> toDomainEntityList(List<CreditoCompensacaoJpa> jpaEntityList) {
+        if (jpaEntityList == null) {
+            return Collections.emptyList();
+        }
+        return jpaEntityList.stream()
+                .map(CreditoCompensacaoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
-    // Mapeadores para ClienteId e SessaoId (assumindo que são VOs simples com UUID)
-    default UUID clienteIdToUuid(ClienteId clienteId) { return clienteId == null ? null : clienteId.getValor(); }
-    default ClienteId uuidToClienteId(UUID uuid) { return uuid == null ? null : ClienteId.de(uuid.toString()); }
-    default UUID sessaoIdToUuid(SessaoId sessaoId) { return sessaoId == null ? null : sessaoId.getValor(); }
-    default SessaoId uuidToSessaoId(UUID uuid) { return uuid == null ? null : SessaoId.de(uuid.toString()); }
-
-
-    @Mapping(source = "id", target = "id", qualifiedByName = "uuidToCreditoId")
-    @Mapping(source = "clienteId", target = "clienteId") // Mapeia UUID para ClienteId
-    @Mapping(source = "sessaoOrigemId", target = "sessaoOrigemId") // Mapeia UUID para SessaoId
-    CreditoCompensacao toDomainEntity(CreditoCompensacaoJpa jpaEntity);
-
-    @Mapping(source = "id", target = "id", qualifiedByName = "creditoIdToUuid")
-    @Mapping(source = "clienteId", target = "clienteId") // Mapeia ClienteId para UUID
-    @Mapping(source = "sessaoOrigemId", target = "sessaoOrigemId") // Mapeia SessaoId para UUID
-    CreditoCompensacaoJpa toJpaEntity(CreditoCompensacao domainEntity);
-
-    List<CreditoCompensacao> toDomainEntityList(List<CreditoCompensacaoJpa> jpaEntityList);
+    public static List<CreditoCompensacaoJpa> toJpaEntityList(List<CreditoCompensacao> domainEntityList) {
+        if (domainEntityList == null) {
+            return Collections.emptyList();
+        }
+        return domainEntityList.stream()
+                .map(CreditoCompensacaoMapper::toJpaEntity)
+                .collect(Collectors.toList());
+    }
 }

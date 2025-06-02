@@ -1,21 +1,22 @@
 package com.cinetech.api.infraestrutura.persistencia.repositorio;
 
-import com.cinetech.api.dominio.enums.StatusSessao;
-import com.cinetech.api.dominio.modelos.assento.Assento;
-import com.cinetech.api.dominio.modelos.cliente.ClienteId;
-import com.cinetech.api.dominio.modelos.filme.FilmeId;
-import com.cinetech.api.dominio.modelos.sala.SalaId;
 import com.cinetech.api.dominio.modelos.sessao.Sessao;
 import com.cinetech.api.dominio.modelos.sessao.SessaoId;
+import com.cinetech.api.dominio.modelos.sala.SalaId;
+import com.cinetech.api.dominio.modelos.filme.FilmeId;
+import com.cinetech.api.dominio.modelos.assento.Assento;
+import com.cinetech.api.dominio.modelos.cliente.ClienteId; // Necessário para o construtor de Assento
+import com.cinetech.api.dominio.enums.StatusSessao;
 import com.cinetech.api.dominio.repositorios.SessaoRepositorio;
-import com.cinetech.api.infraestrutura.persistencia.entidade.AssentoJpa;
+import com.cinetech.api.infraestrutura.persistencia.jpa.SessaoJpaRepository; // Interface Spring Data JPA
 import com.cinetech.api.infraestrutura.persistencia.entidade.SessaoJpa;
-import com.cinetech.api.infraestrutura.persistencia.jpa.SessaoJpaRepository;
-
+import com.cinetech.api.infraestrutura.persistencia.entidade.AssentoJpa; // Para iterar
+// Importe as CLASSES dos mappers para chamadas estáticas
+import com.cinetech.api.infraestrutura.persistencia.mapper.SessaoMapper;
 import com.cinetech.api.infraestrutura.persistencia.mapper.AssentoMapper;
 import com.cinetech.api.infraestrutura.persistencia.mapper.FilmeMapper;
 import com.cinetech.api.infraestrutura.persistencia.mapper.SalaMapper;
-import com.cinetech.api.infraestrutura.persistencia.mapper.SessaoMapper;
+
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,86 +27,73 @@ import java.util.stream.Collectors;
 @Repository
 public class SessaoRepositorioJpa implements SessaoRepositorio {
 
-    private final SessaoJpaRepository jpaRepository;
-    private final SessaoMapper sessaoMapper;
-    private final AssentoMapper assentoMapper;
-    private final FilmeMapper filmeMapper;
-    private final SalaMapper salaMapper;
+    private final SessaoJpaRepository jpaRepositoryInternal;
+    // Mappers não são mais injetados
 
-    public SessaoRepositorioJpa(SessaoJpaRepository jpaRepository, SessaoMapper sessaoMapper,
-                                AssentoMapper assentoMapper, FilmeMapper filmeMapper, SalaMapper salaMapper)
-    {
-        this.jpaRepository = jpaRepository;
-        this.sessaoMapper = sessaoMapper;
-        this.assentoMapper = assentoMapper;
-        this.filmeMapper = filmeMapper;
-        this.salaMapper = salaMapper;
+    public SessaoRepositorioJpa(SessaoJpaRepository jpaRepositoryInternal) {
+        this.jpaRepositoryInternal = jpaRepositoryInternal;
     }
 
-    private Sessao reconstruirAgregadoSessao(SessaoJpa sessaoJpa) {
-        if (sessaoJpa == null) return null;
+    // Método auxiliar para reconstruir o agregado Sessao com seus Assentos, usando chamadas estáticas aos mappers
+    private static Sessao reconstruirAgregadoSessao(SessaoJpa sessaoJpa) {
+        if (sessaoJpa == null) {
+            return null;
+        }
 
-        // 1. Mapeia a Sessao (cabeçalho, sem os assentos de domínio ainda)
-        // O SessaoMapper.toDomainEntity agora usa FilmeMapper e SalaMapper (via 'uses') para os campos Filme e Sala.
-        Sessao sessaoDominio = sessaoMapper.toDomainEntity(sessaoJpa);
+        // 1. Mapeia a Sessao (cabeçalho) usando o método estático do SessaoMapper.
+        // Este método já deve chamar FilmeMapper e SalaMapper estaticamente para os campos Filme e Sala.
+        Sessao sessaoDominio = SessaoMapper.toDomainEntity(sessaoJpa); // Presume que este retorna Sessao sem a lista de Assentos populada
 
-        // 2. Constrói a lista de Assentos de domínio e os adiciona à Sessao de domínio
-        if (sessaoJpa.getAssentos() != null && !sessaoJpa.getAssentos().isEmpty()) {
-            List<Assento> assentosDeDominio = new ArrayList<>();
+        // 2. Constrói e adiciona os Assentos de domínio
+        if (sessaoJpa.getAssentos() != null && !sessaoJpa.getAssentos().isEmpty() && sessaoDominio != null) {
             for (AssentoJpa assentoJpa : sessaoJpa.getAssentos()) {
-                // Constrói a entidade Assento de domínio, passando a referência da Sessao de domínio pai
-                Assento assentoDominio = new Assento(
-                        assentoMapper.uuidToAssentoId(assentoJpa.getId()), // Usa o mapper para converter o ID
-                        sessaoDominio, // <<< PASSA A REFERÊNCIA DA SESSÃO DE DOMÍNIO PAI
-                        assentoJpa.getIdentificadorPosicao(),
-                        assentoJpa.getTipo(),
-                        assentoJpa.getStatus(),
-                        assentoJpa.getClienteIdReservaTemporaria() != null ? ClienteId.de(assentoJpa.getClienteIdReservaTemporaria().toString()) : null,
-                        assentoJpa.getTimestampExpiracaoReserva()
-                );
-                // Adiciona o Assento de domínio à lista
-                sessaoDominio.adicionarAssento(assentoDominio);
+                // Chama o método estático AssentoMapper.toDomainEntity,
+                // passando a sessaoDominio pai como contexto.
+                Assento assentoDominio = AssentoMapper.toDomainEntity(assentoJpa, sessaoDominio);
+                sessaoDominio.adicionarAssento(assentoDominio); // Método da entidade Sessao
             }
         }
         return sessaoDominio;
     }
 
-    private List<Sessao> reconstruirListaAgregadosSessao(List<SessaoJpa> sessoesJpa) {
-        if (sessoesJpa == null) return Collections.emptyList();
+    private static List<Sessao> reconstruirListaAgregadosSessao(List<SessaoJpa> sessoesJpa) {
+        if (sessoesJpa == null) {
+            return Collections.emptyList();
+        }
         return sessoesJpa.stream()
-                .map(this::reconstruirAgregadoSessao)
-                .filter(Objects::nonNull) // Para o caso de algum mapeamento falhar
+                .map(SessaoRepositorioJpa::reconstruirAgregadoSessao) // Chama o método estático local
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public Sessao salvar(Sessao sessaoDominio) {
-        SessaoJpa sessaoJpa = sessaoMapper.toJpaEntity(sessaoDominio);
+        SessaoJpa sessaoJpa = SessaoMapper.toJpaEntity(sessaoDominio); // Chamada estática
         // Garante o relacionamento bidirecional para JPA antes de salvar
         if (sessaoJpa.getAssentos() != null) {
             sessaoJpa.getAssentos().forEach(assentoJpa -> {
-                if (assentoJpa.getSessao() == null) { // Define a referência se o AssentoMapper não o fez
+                if (assentoJpa.getSessao() == null) {
                     assentoJpa.setSessao(sessaoJpa);
                 }
             });
         }
-        SessaoJpa sessaoSalvaJpa = jpaRepository.save(sessaoJpa);
+        SessaoJpa sessaoSalvaJpa = jpaRepositoryInternal.save(sessaoJpa);
         return reconstruirAgregadoSessao(sessaoSalvaJpa);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Sessao> buscarPorId(SessaoId sessaoId) {
-        UUID idPrimitivo = sessaoMapper.toPrimitiveId(sessaoId);
-        return jpaRepository.findById(idPrimitivo).map(this::reconstruirAgregadoSessao);
+    public Optional<Sessao> buscarPorId(SessaoId sessaoIdDominio) {
+        UUID idPrimitivo = SessaoMapper.toPrimitiveId(sessaoIdDominio); // Chamada estática
+        return jpaRepositoryInternal.findById(idPrimitivo).map(SessaoRepositorioJpa::reconstruirAgregadoSessao);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Sessao> buscarPorSalaId(SalaId salaId) {
-        // Assumindo que SalaMapper tem toPrimitiveId(SalaId salaIdVo)
-        return reconstruirListaAgregadosSessao(jpaRepository.findBySala_Id(salaMapper.toPrimitiveId(salaId)));
+    public List<Sessao> buscarPorSalaId(SalaId salaIdDominio) {
+        UUID salaUUID = SalaMapper.toPrimitiveId(salaIdDominio); // Chamada estática
+        return reconstruirListaAgregadosSessao(jpaRepositoryInternal.findBySala_Id(salaUUID));
     }
 
     @Override
@@ -114,38 +102,51 @@ public class SessaoRepositorioJpa implements SessaoRepositorio {
             SalaId salaId, LocalDateTime inicioPeriodoProposto, LocalDateTime fimPeriodoProposto,
             Optional<SessaoId> sessaoIdParaExcluirOptional) {
 
-        List<SessaoJpa> sessoesNaSalaJpa = jpaRepository.findBySala_Id(salaMapper.toPrimitiveId(salaId));
-        List<Sessao> sessoesConvertidas = reconstruirListaAgregadosSessao(sessoesNaSalaJpa);
+        UUID salaUUID = SalaMapper.toPrimitiveId(salaId); // Chamada estática
+        UUID sessaoExcluirUUID = sessaoIdParaExcluirOptional
+                .map(SessaoMapper::toPrimitiveId).orElse(null); // Chamada estática
 
-        return sessoesConvertidas.stream()
-                .filter(sessaoExistente -> {
-                    if (sessaoIdParaExcluirOptional.isPresent() &&
-                            sessaoExistente.getId().equals(sessaoIdParaExcluirOptional.get())) {
+        // Busca apenas os JpaEntities. A lógica de cálculo de fim de sessão e conflito fica aqui.
+        List<SessaoJpa> sessoesNaSalaJpa = jpaRepositoryInternal.findBySala_Id(salaUUID);
+
+        return sessoesNaSalaJpa.stream()
+                .filter(sessaoExistenteJpa -> {
+                    // Exclui a própria sessão da verificação, se um ID foi fornecido
+                    if (sessaoExcluirUUID != null && sessaoExistenteJpa.getId().equals(sessaoExcluirUUID)) {
                         return false;
                     }
-                    if (sessaoExistente.getFilme() == null) return false;
-                    LocalDateTime inicioSessaoExistente = sessaoExistente.getDataHoraInicio();
+                    // Para calcular o fim da sessão, precisamos da duração do filme.
+                    // Isso requer o FilmeJpa associado. Se for LAZY, pode causar N+1.
+                    // Idealmente, FilmeJpa é carregado EAGER ou com JOIN FETCH na query findBySala_Id,
+                    // ou o cálculo do conflito é feito de forma mais inteligente no banco.
+                    // Assumindo que FilmeJpa está acessível:
+                    if (sessaoExistenteJpa.getFilme() == null) return false; // Sessão inválida sem filme
+
+                    LocalDateTime inicioSessaoExistente = sessaoExistenteJpa.getDataHoraInicio();
                     LocalDateTime fimSessaoExistente = inicioSessaoExistente
-                            .plusMinutes(sessaoExistente.getFilme().getDuracaoMinutos());
+                            .plusMinutes(sessaoExistenteJpa.getFilme().getDuracaoMinutos());
+
                     return inicioPeriodoProposto.isBefore(fimSessaoExistente) &&
                             fimPeriodoProposto.isAfter(inicioSessaoExistente);
                 })
+                .map(SessaoRepositorioJpa::reconstruirAgregadoSessao) // Converte para domínio APÓS filtrar
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Sessao> buscarTodas() {
-        return reconstruirListaAgregadosSessao(jpaRepository.findAll());
+        return reconstruirListaAgregadosSessao(jpaRepositoryInternal.findAll());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<Sessao> buscarSessoesAtivasPorFilmeId(FilmeId filmeId) {
-        // Assumindo FilmeMapper.toPrimitiveId
-        UUID filmeUUID = filmeMapper.toPrimitiveId(filmeId);
+    public List<Sessao> buscarSessoesAtivasPorFilmeId(FilmeId filmeIdDominio) {
+        UUID filmeUUID = FilmeMapper.toPrimitiveId(filmeIdDominio); // Chamada estática
         List<StatusSessao> statusAtivos = List.of(StatusSessao.PROGRAMADA, StatusSessao.ABERTA);
-        List<SessaoJpa> sessoesAtivasJpa = jpaRepository.findByFilme_IdAndStatusInAndDataHoraInicioAfter(
+
+        // Assume que este método existe em SessaoJpaRepository
+        List<SessaoJpa> sessoesAtivasJpa = jpaRepositoryInternal.findByFilme_IdAndStatusInAndDataHoraInicioAfter(
                 filmeUUID, statusAtivos, LocalDateTime.now()
         );
         return reconstruirListaAgregadosSessao(sessoesAtivasJpa);
@@ -154,6 +155,7 @@ public class SessaoRepositorioJpa implements SessaoRepositorio {
     @Override
     @Transactional(readOnly = true)
     public List<Sessao> buscarPorStatus(StatusSessao status) {
-        return reconstruirListaAgregadosSessao(jpaRepository.findByStatus(status));
+        // Assume que este método existe em SessaoJpaRepository
+        return reconstruirListaAgregadosSessao(jpaRepositoryInternal.findByStatus(status));
     }
 }

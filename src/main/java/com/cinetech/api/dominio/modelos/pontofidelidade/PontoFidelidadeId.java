@@ -23,6 +23,10 @@ public final class PontoFidelidadeId {
         }
     }
 
+    public static PontoFidelidadeId de(UUID valorUuid) {
+        return new PontoFidelidadeId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValorUUID() {
         return valor;
     }

@@ -8,9 +8,12 @@ import com.cinetech.api.dominio.modelos.sala.SalaId;
 import com.cinetech.api.dominio.repositorios.ReservaEventoRepositorio;
 import com.cinetech.api.infraestrutura.persistencia.entidade.ReservaEventoJpa;
 import com.cinetech.api.infraestrutura.persistencia.jpa.ReservaEventoJpaRepository;
+// Importe as CLASSES dos mappers para chamadas estáticas
 import com.cinetech.api.infraestrutura.persistencia.mapper.ClienteMapper;
 import com.cinetech.api.infraestrutura.persistencia.mapper.ReservaEventoMapper;
 import com.cinetech.api.infraestrutura.persistencia.mapper.SalaMapper;
+import com.cinetech.api.infraestrutura.persistencia.mapper.PagamentoMapper; // Para converter PagamentoId
+
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,71 +28,52 @@ import java.util.stream.Collectors;
 public class ReservaEventoRepositorioJpa implements ReservaEventoRepositorio {
 
     private final ReservaEventoJpaRepository jpaRepositoryInternal;
-    private final ReservaEventoMapper reservaEventoMapper;
-    // Mappers auxiliares para converter IDs de VOs para primitivos, se necessário na lógica de consulta
-    private final SalaMapper salaMapper;
-    private final ClienteMapper clienteMapper;
-    // private final PagamentoMapper pagamentoMapper; // Se ReservaEventoMapper precisar para PagamentoId
+    // Mappers não são injetados
 
-    public ReservaEventoRepositorioJpa(ReservaEventoJpaRepository jpaRepositoryInternal,
-                                       ReservaEventoMapper reservaEventoMapper,
-                                       SalaMapper salaMapper,
-                                       ClienteMapper clienteMapper
-            /*, PagamentoMapper pagamentoMapper */) {
+    public ReservaEventoRepositorioJpa(ReservaEventoJpaRepository jpaRepositoryInternal) {
         this.jpaRepositoryInternal = jpaRepositoryInternal;
-        this.reservaEventoMapper = reservaEventoMapper;
-        this.salaMapper = salaMapper;
-        this.clienteMapper = clienteMapper;
-        // this.pagamentoMapper = pagamentoMapper;
-    }
-
-    // Método auxiliar para reconstruir o agregado (se ReservaEvento tiver coleções filhas complexas)
-    // Para ReservaEvento, o mapeamento é mais direto se não houver filhos complexos no agregado.
-    private ReservaEvento mapToDomain(ReservaEventoJpa jpaEntity) {
-        if (jpaEntity == null) return null;
-        // O ReservaEventoMapper deve ser configurado com 'uses' para os mappers dos IDs VO
-        // ou ter métodos default para converter UUIDs para ClienteId, SalaId, PagamentoId.
-        return reservaEventoMapper.toDomainEntity(jpaEntity);
-    }
-
-    private List<ReservaEvento> mapToDomainList(List<ReservaEventoJpa> jpaList) {
-        if (jpaList == null) return Collections.emptyList();
-        return jpaList.stream().map(this::mapToDomain).collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public ReservaEvento salvar(ReservaEvento reservaEventoDominio) {
-        ReservaEventoJpa reservaJpa = reservaEventoMapper.toJpaEntity(reservaEventoDominio);
+        ReservaEventoJpa reservaJpa = ReservaEventoMapper.toJpaEntity(reservaEventoDominio); // Chamada estática
         ReservaEventoJpa salvaJpa = jpaRepositoryInternal.save(reservaJpa);
-        return mapToDomain(salvaJpa);
+        return ReservaEventoMapper.toDomainEntity(salvaJpa); // Chamada estática
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<ReservaEvento> buscarPorId(ReservaEventoId reservaEventoIdDominio) {
-        UUID idPrimitivo = reservaEventoMapper.toPrimitiveId(reservaEventoIdDominio);
-        return jpaRepositoryInternal.findById(idPrimitivo).map(this::mapToDomain);
+        UUID idPrimitivo = ReservaEventoMapper.toPrimitiveId(reservaEventoIdDominio); // Chamada estática
+        return jpaRepositoryInternal.findById(idPrimitivo)
+                .map(ReservaEventoMapper::toDomainEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ReservaEvento> buscarTodas() {
-        return mapToDomainList(jpaRepositoryInternal.findAll());
+        return jpaRepositoryInternal.findAll().stream()
+                .map(ReservaEventoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ReservaEvento> buscarPorSalaId(SalaId salaIdDominio) {
-        UUID salaIdPrimitivo = salaMapper.toPrimitiveId(salaIdDominio);
-        return mapToDomainList(jpaRepositoryInternal.findBySala_Id(salaIdPrimitivo));
+        UUID salaIdPrimitivo = SalaMapper.toPrimitiveId(salaIdDominio); // Chamada estática
+        return jpaRepositoryInternal.findBySala_Id(salaIdPrimitivo).stream()
+                .map(ReservaEventoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ReservaEvento> buscarPorClienteId(ClienteId clienteIdDominio) {
-        UUID clienteIdPrimitivo = clienteMapper.toPrimitiveId(clienteIdDominio);
-        return mapToDomainList(jpaRepositoryInternal.findByCliente_Id(clienteIdPrimitivo));
+        UUID clienteIdPrimitivo = ClienteMapper.toPrimitiveId(clienteIdDominio); // Chamada estática
+        return jpaRepositoryInternal.findByCliente_Id(clienteIdPrimitivo).stream()
+                .map(ReservaEventoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -98,27 +82,23 @@ public class ReservaEventoRepositorioJpa implements ReservaEventoRepositorio {
             SalaId salaId, LocalDateTime inicioPeriodo, LocalDateTime fimPeriodo,
             Optional<ReservaEventoId> reservaEventoIdParaExcluirOptional) {
 
-        UUID salaUUID = salaMapper.toPrimitiveId(salaId);
+        UUID salaUUID = SalaMapper.toPrimitiveId(salaId); // Chamada estática
         UUID reservaExcluirUUID = reservaEventoIdParaExcluirOptional
-                .map(reservaEventoMapper::toPrimitiveId).orElse(null);
+                .map(ReservaEventoMapper::toPrimitiveId).orElse(null); // Chamada estática
 
-        // Usa a query customizada do JpaRepository
         List<ReservaEventoJpa> conflitantesJpa = jpaRepositoryInternal.findReservasConflitantes(
                 salaUUID, inicioPeriodo, fimPeriodo, reservaExcluirUUID
         );
-
-        return mapToDomainList(conflitantesJpa);
+        return conflitantesJpa.stream()
+                .map(ReservaEventoMapper::toDomainEntity)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ReservaEvento> buscarPorStatus(StatusReservaEvento status) {
-        // Supondo que ReservaEventoJpaRepository tenha: List<ReservaEventoJpa> findByStatus(StatusReservaEvento status);
-        // return mapToDomainList(jpaRepositoryInternal.findByStatus(status));
-        // Implementação de exemplo se não houver:
-        return jpaRepositoryInternal.findAll().stream()
-                .filter(r -> r.getStatus() == status)
-                .map(this::mapToDomain)
+        return jpaRepositoryInternal.findByStatus(status).stream() // Assume que findByStatus existe em ReservaEventoJpaRepository
+                .map(ReservaEventoMapper::toDomainEntity)
                 .collect(Collectors.toList());
     }
 }

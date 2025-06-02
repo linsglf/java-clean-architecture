@@ -12,6 +12,9 @@ public final class PromocaoId {
         try { return new PromocaoId(UUID.fromString(valorStr)); }
         catch (IllegalArgumentException e) { throw new IllegalArgumentException("ID de Promoção inválido", e); }
     }
+
+    public static PromocaoId de(UUID valorUuid) { return new PromocaoId(valorUuid); } // Usa o construtor privado
+
     public UUID getValor() { return valor; }
     @Override public boolean equals(Object o) { if (this == o) return true; if (o == null || getClass() != o.getClass()) return false; PromocaoId that = (PromocaoId) o; return valor.equals(that.valor); }
     @Override public int hashCode() { return Objects.hash(valor); }

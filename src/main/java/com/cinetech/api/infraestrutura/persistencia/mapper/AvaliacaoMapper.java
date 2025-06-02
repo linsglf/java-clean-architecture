@@ -5,46 +5,79 @@ import com.cinetech.api.dominio.modelos.avaliacao.AvaliacaoId;
 import com.cinetech.api.dominio.modelos.cliente.ClienteId;
 import com.cinetech.api.dominio.modelos.filme.FilmeId;
 import com.cinetech.api.infraestrutura.persistencia.entidade.AvaliacaoJpa;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
+import com.cinetech.api.infraestrutura.persistencia.entidade.ClienteJpa; // Para toJpaEntity
+import com.cinetech.api.infraestrutura.persistencia.entidade.FilmeJpa;   // Para toJpaEntity
+import org.springframework.context.annotation.Bean;
 
+
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring")
-public interface AvaliacaoMapper {
+public class AvaliacaoMapper {
 
-    @Named("avaliacaoIdToUuid")
-    default UUID avaliacaoIdToUuid(AvaliacaoId avaliacaoId) {
-        return avaliacaoId == null ? null : avaliacaoId.getValor();
-    }
+    private AvaliacaoMapper() {}
 
-    @Named("uuidToAvaliacaoId")
-    default AvaliacaoId uuidToAvaliacaoId(UUID uuid) {
-        return uuid == null ? null : AvaliacaoId.de(uuid.toString());
-    }
-
-    default UUID toPrimitiveId(AvaliacaoId avaliacaoIdVo) {
+    public static UUID toPrimitiveId(AvaliacaoId avaliacaoIdVo) { // <<< MÉTODO NECESSÁRIO
         return avaliacaoIdVo == null ? null : avaliacaoIdVo.getValor();
     }
+    // Os conversores para FilmeId e ClienteId serão chamados a partir de FilmeMapper e ClienteMapper
 
-    // Mapeadores para IDs
-    default UUID filmeIdToUuid(FilmeId filmeId) { return filmeId == null ? null : filmeId.getValor(); }
-    default FilmeId uuidToFilmeId(UUID uuid) { return uuid == null ? null : FilmeId.de(uuid.toString()); }
-    default UUID clienteIdToUuid(ClienteId clienteId) { return clienteId == null ? null : clienteId.getValor(); }
-    default ClienteId uuidToClienteId(UUID uuid) { return uuid == null ? null : ClienteId.de(uuid.toString()); }
+    public static AvaliacaoJpa toJpaEntity(Avaliacao domainEntity) {
+        if (domainEntity == null) return null;
+        AvaliacaoJpa jpaEntity = new AvaliacaoJpa();
+        if (domainEntity.getId() != null) {
+            jpaEntity.setId(toPrimitiveId(domainEntity.getId()));
+        }
 
+        if (domainEntity.getFilmeId() != null) {
+            FilmeJpa filmeRef = new FilmeJpa();
+            filmeRef.setId(FilmeMapper.toPrimitiveId(domainEntity.getFilmeId())); // Chama estático de FilmeMapper
+            jpaEntity.setFilme(filmeRef);
+        }
 
-    @Mapping(source = "id", target = "id", qualifiedByName = "uuidToAvaliacaoId")
-    @Mapping(source = "filmeId", target = "filmeId")
-    @Mapping(source = "clienteId", target = "clienteId")
-    Avaliacao toDomainEntity(AvaliacaoJpa jpaEntity);
+        if (domainEntity.getClienteId() != null) {
+            ClienteJpa clienteRef = new ClienteJpa();
+            clienteRef.setId(ClienteMapper.toPrimitiveId(domainEntity.getClienteId())); // Chama estático de ClienteMapper
+            jpaEntity.setCliente(clienteRef);
+        }
 
-    @Mapping(source = "id", target = "id", qualifiedByName = "avaliacaoIdToUuid")
-    @Mapping(source = "filmeId", target = "filmeId")
-    @Mapping(source = "clienteId", target = "clienteId")
-    AvaliacaoJpa toJpaEntity(Avaliacao domainEntity);
+        jpaEntity.setNota(domainEntity.getNota());
+        jpaEntity.setComentario(domainEntity.getComentario());
+        jpaEntity.setDataAvaliacao(domainEntity.getDataAvaliacao());
+        jpaEntity.setStatusVisibilidade(domainEntity.getStatusVisibilidade());
+        return jpaEntity;
+    }
 
-    List<Avaliacao> toDomainEntityList(List<AvaliacaoJpa> jpaEntityList);
+    public static Avaliacao toDomainEntity(AvaliacaoJpa jpaEntity) {
+        if (jpaEntity == null) return null;
+
+        FilmeId filmeIdDominio = null;
+        if (jpaEntity.getFilme() != null && jpaEntity.getFilme().getId() != null) {
+            // Chama estático de FilmeMapper para converter UUID para FilmeId
+            filmeIdDominio = FilmeMapper.uuidToFilmeId(jpaEntity.getFilme().getId());
+        }
+
+        ClienteId clienteIdDominio = null;
+        if (jpaEntity.getCliente() != null && jpaEntity.getCliente().getId() != null) {
+            // Chama estático de ClienteMapper para converter UUID para ClienteId
+            clienteIdDominio = ClienteMapper.uuidToClienteId(jpaEntity.getCliente().getId());
+        }
+
+        return new Avaliacao(
+                AvaliacaoId.de(jpaEntity.getId()),
+                filmeIdDominio,
+                clienteIdDominio,
+                jpaEntity.getNota(),
+                jpaEntity.getComentario(),
+                jpaEntity.getDataAvaliacao(),
+                jpaEntity.getStatusVisibilidade()
+        );
+    }
+
+    public static List<Avaliacao> toDomainEntityList(List<AvaliacaoJpa> jpaEntityList) {
+        if (jpaEntityList == null) return Collections.emptyList();
+        return jpaEntityList.stream().map(AvaliacaoMapper::toDomainEntity).collect(Collectors.toList());
+    }
 }

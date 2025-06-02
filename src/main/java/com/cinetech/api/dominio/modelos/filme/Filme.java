@@ -4,39 +4,49 @@ import java.time.LocalDate;
 import java.util.Objects;
 
 public class Filme {
-    private final FilmeId id;
-    private String titulo; // [cite: 4]
-    private String genero; // [cite: 4]
-    private int duracaoMinutos; // [cite: 4] ("duração")
-    private String idioma; // [cite: 4]
-    private String classificacaoEtaria; // [cite: 4]
-    private String sinopse; // Atributo comum, embora não listado na tabela, mas implícito para um sistema de cinema.
-    private LocalDate dataInicioExibicao; // [cite: 5, 28]
-    private LocalDate dataFimExibicao; // [cite: 5, 28]
-    private double notaMediaAvaliacao; // Para regra de remoção antecipada [cite: 22]
-    private boolean removidoDaProgramacao; // Para F3 [cite: 7]
+    private final FilmeId id; // final, setado no construtor
+    private String titulo;
+    private String genero;
+    private int duracaoMinutos;
+    private String idioma;
+    private String classificacaoEtaria;
+    private LocalDate dataInicioExibicao;
+    private LocalDate dataFimExibicao;
+    private String sinopse;
+    private double notaMediaAvaliacao;
+    private boolean removidoDaProgramacao;
 
+    // Construtor para criar um NOVO filme (ID e alguns defaults gerados aqui)
     public Filme(String titulo, String genero, int duracaoMinutos, String idioma,
                  String classificacaoEtaria, LocalDate dataInicioExibicao,
                  LocalDate dataFimExibicao, String sinopse) {
-        this(FilmeId.novo(), titulo, genero, duracaoMinutos, idioma, classificacaoEtaria,
-                dataInicioExibicao, dataFimExibicao, sinopse, 0.0, false);
+        this(FilmeId.novo(), // Gera novo ID
+                titulo, genero, duracaoMinutos, idioma, classificacaoEtaria,
+                dataInicioExibicao, dataFimExibicao, sinopse,
+                0.0, // notaMediaAvaliacao inicial
+                false // removidoDaProgramacao inicial
+        );
     }
 
+    // Construtor COMPLETO para reconstituição (usado pelo Mapper e persistência)
+    // O MapStruct tentará usar este construtor se os nomes dos campos em FilmeJpa
+    // (após qualquer conversão de tipo para o ID) corresponderem aos nomes dos parâmetros aqui.
     public Filme(FilmeId id, String titulo, String genero, int duracaoMinutos, String idioma,
                  String classificacaoEtaria, LocalDate dataInicioExibicao,
                  LocalDate dataFimExibicao, String sinopse, double notaMediaAvaliacao, boolean removidoDaProgramacao) {
         this.id = Objects.requireNonNull(id, "ID do Filme não pode ser nulo.");
+        // As validações são chamadas pelos setters
         setTitulo(titulo);
         setGenero(genero);
         setDuracaoMinutos(duracaoMinutos);
         setIdioma(idioma);
         setClassificacaoEtaria(classificacaoEtaria);
+        // Para datas, a validação de consistência entre elas é feita após ambas serem setadas.
         this.dataInicioExibicao = Objects.requireNonNull(dataInicioExibicao, "Data de início da exibição não pode ser nula.");
         this.dataFimExibicao = Objects.requireNonNull(dataFimExibicao, "Data de fim da exibição não pode ser nula.");
-        validarConsistenciaDatasExibicao();
+        validarConsistenciaDatasExibicao(); // Valida após ambas estarem setadas
         setSinopse(sinopse);
-        setNotaMediaAvaliacao(notaMediaAvaliacao);
+        setNotaMediaAvaliacao(notaMediaAvaliacao); // Setter valida o intervalo da nota
         this.removidoDaProgramacao = removidoDaProgramacao;
     }
 
@@ -100,10 +110,10 @@ public class Filme {
     }
 
     public void setSinopse(String sinopse) {
-        this.sinopse = sinopse; // Pode ser nulo ou vazio
+        this.sinopse = sinopse;
     }
 
-    public void setNotaMediaAvaliacao(double notaMediaAvaliacao) { // F8
+    public void setNotaMediaAvaliacao(double notaMediaAvaliacao) {
         if (notaMediaAvaliacao < 0.0 || notaMediaAvaliacao > 5.0) {
             throw new IllegalArgumentException("Nota média da avaliação deve estar entre 0.0 e 5.0. Recebido: " + notaMediaAvaliacao);
         }
@@ -119,33 +129,23 @@ public class Filme {
         }
     }
 
-    // rever
-    public boolean exibicaoTerminadaEm(LocalDate dataReferencia) {
+    public boolean estaEmExibicao(LocalDate dataReferencia) {
         Objects.requireNonNull(dataReferencia, "Data de referência não pode ser nula.");
-        if (this.dataFimExibicao == null) { // Se não tem data de fim, não terminou (ou não foi definida)
-            return false;
-        }
-        return dataReferencia.isAfter(this.dataFimExibicao);
-    }
-
-    /**
-     * Verifica se o filme está em período de exibição na data de referência.
-     * Relevante para agendamento de sessão e exibição na listagem de filmes em cartaz.
-     * @param dataReferencia A data para a qual verificar a exibição.
-     * @return true se o filme está em exibição, false caso contrário.
-     */
-    public boolean estaEmExibicao(LocalDate dataReferencia) { // <<< MÉTODO ADICIONADO/RESTAURADO
-        Objects.requireNonNull(dataReferencia, "Data de referência não pode ser nula.");
-        if (isRemovidoDaProgramacao()) { // Se foi removido, não está em exibição
+        if (isRemovidoDaProgramacao()) {
             return false;
         }
         if (dataInicioExibicao == null || dataFimExibicao == null) {
-            // Se as datas não estão completamente definidas, não se pode afirmar que está em exibição
             return false;
         }
-        // Está em exibição se a data de referência NÃO é ANTES do início E NÃO é DEPOIS do fim.
-        // Ou seja, dataReferencia >= dataInicioExibicao AND dataReferencia <= dataFimExibicao
         return !dataReferencia.isBefore(dataInicioExibicao) && !dataReferencia.isAfter(dataFimExibicao);
+    }
+
+    public boolean exibicaoTerminadaEm(LocalDate dataReferencia) {
+        Objects.requireNonNull(dataReferencia, "Data de referência não pode ser nula.");
+        if (this.dataFimExibicao == null) {
+            return false;
+        }
+        return dataReferencia.isAfter(this.dataFimExibicao);
     }
 
     public void marcarComoRemovidoDaProgramacao() {
@@ -153,7 +153,7 @@ public class Filme {
     }
 
     public boolean deveSerRemovidoPorNotaBaixa() {
-        return this.notaMediaAvaliacao < 2.5; // [cite: 22]
+        return this.notaMediaAvaliacao < 2.5;
     }
 
     @Override
@@ -174,8 +174,6 @@ public class Filme {
         return "Filme{" +
                 "id=" + id +
                 ", titulo='" + titulo + '\'' +
-                ", dataFimExibicao=" + dataFimExibicao +
-                ", removidoDaProgramacao=" + removidoDaProgramacao +
                 '}';
     }
 }

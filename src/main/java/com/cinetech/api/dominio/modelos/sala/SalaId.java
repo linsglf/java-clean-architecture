@@ -23,6 +23,10 @@ public final class SalaId {
         }
     }
 
+    public static SalaId de(UUID valorUuid) {
+        return new SalaId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValor() { return valor; }
 
     @Override

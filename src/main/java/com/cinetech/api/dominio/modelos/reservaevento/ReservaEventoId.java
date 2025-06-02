@@ -23,6 +23,10 @@ public final class ReservaEventoId {
         }
     }
 
+    public static ReservaEventoId de(UUID valorUuid) {
+        return new ReservaEventoId(valorUuid); // Usa o construtor privado
+    }
+
     public UUID getValor() {
         return valor;
     }

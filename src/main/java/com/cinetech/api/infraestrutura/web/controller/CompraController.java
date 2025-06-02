@@ -14,10 +14,7 @@ import com.cinetech.api.infraestrutura.web.dto.compra.ConfirmarPagamentoRequestD
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/compras") // Endpoint base para o fluxo de compra
@@ -29,6 +26,12 @@ public class CompraController {
     public CompraController(CompraAplicacao compraAplicacao /*, IngressoApiMapper ingressoApiMapper */) {
         this.compraAplicacao = compraAplicacao;
         // this.ingressoApiMapper = ingressoApiMapper;
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<String> status() {
+        // Endpoint para verificar se o serviço está ativo
+        return ResponseEntity.ok("Serviço de Compra Ativo");
     }
 
     @PostMapping("/iniciar-selecao")
